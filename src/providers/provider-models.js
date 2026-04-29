@@ -67,7 +67,9 @@ export const PROVIDER_MODELS = {
     'claude-kiro-oauth': [
         'claude-haiku-4-5',
         'claude-opus-4-7',
+        'claude-opus-4-7-thinking',
         'claude-opus-4-6',
+        'claude-opus-4-6-thinking',
         'claude-sonnet-4-6',
         'claude-opus-4-5',
         'claude-opus-4-5-20251101',
