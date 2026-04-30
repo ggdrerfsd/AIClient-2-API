@@ -333,6 +333,7 @@ async function _handleUpdateConfig(req, res, currentConfig, body) {
                 SYSTEM_PROMPT_FILE_PATH: currentConfig.SYSTEM_PROMPT_FILE_PATH,
                 SYSTEM_PROMPT_MODE: currentConfig.SYSTEM_PROMPT_MODE,
                 SYSTEM_PROMPT_REPLACEMENTS: currentConfig.SYSTEM_PROMPT_REPLACEMENTS,
+                OUTPUT_IDENTITY_SANITIZE_ENABLED: currentConfig.OUTPUT_IDENTITY_SANITIZE_ENABLED,
                 PROMPT_LOG_BASE_NAME: currentConfig.PROMPT_LOG_BASE_NAME,
                 PROMPT_LOG_MODE: currentConfig.PROMPT_LOG_MODE,
                 REQUEST_MAX_RETRIES: currentConfig.REQUEST_MAX_RETRIES,
