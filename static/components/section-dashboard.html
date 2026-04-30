@@ -2,36 +2,30 @@
 <!-- Dashboard Section -->
 <section id="dashboard" class="section active" aria-labelledby="dashboard-title">
     <h2 id="dashboard-title" data-i18n="dashboard.title">系统概览</h2>
-    <div class="dashboard-top-row">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-info">
-                    <h3 id="uptime">--</h3>
-                    <p data-i18n="dashboard.uptime">运行时间</p>
-                </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="uptime">--</h3>
+                <p data-i18n="dashboard.uptime">运行时间</p>
             </div>
         </div>
-        
-        <!-- Contact and Sponsor Section -->
-        <div class="contact-section dashboard-contact">
-            <div class="contact-grid">
-                <div class="contact-card">
-                    <h3><i id="wechat-icon" class="fab fa-weixin"></i> <span id="wechat-title" data-i18n="dashboard.contact.wechat">扫码进群，注明来意</span></h3>
-                    <div class="qr-container">
-                        <img src="static/wechat.png" id="wechat-img" alt="微信二维码" class="qr-code clickable-qr">
-                    </div>
-                    <p class="qr-description" id="wechat-desc" data-i18n="dashboard.contact.wechatDesc">添加微信获取更多技术支持和交流</p>
-                </div>
-                <div class="contact-card" id="sponsor-card">
-                    <h3><i class="fas fa-heart"></i> <span id="sponsor-title" data-i18n="dashboard.contact.sponsor">扫码赞助</span></h3>
-                    <div class="qr-container">
-                        <img src="static/sponsor.png" id="sponsor-img" alt="赞助二维码" class="qr-code clickable-qr">
-                    </div>
-                    <p class="qr-description" id="sponsor-desc" data-i18n="dashboard.contact.sponsorDesc">您的赞助是项目持续发展的动力</p>
-                </div>
+    </div>
+
+    <!-- Dashboard Usage Summary Panel -->
+    <div class="dashboard-usage-panel" id="dashboardUsagePanel" style="display: none;">
+        <div class="system-info-header">
+            <h3><i class="fas fa-chart-pie"></i> <span data-i18n="dashboard.usageSummary">用量概览</span></h3>
+            <button id="refreshDashboardUsageBtn" class="btn btn-outline btn-sm" data-i18n-title="common.refresh" title="刷新">
+                <i class="fas fa-sync-alt"></i> <span data-i18n="common.refresh">刷新</span>
+            </button>
+        </div>
+        <div id="dashboardUsageGrid" class="dashboard-usage-grid">
+            <div class="status-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span data-i18n="common.loading">加载中...</span>
             </div>
         </div>
     </div>

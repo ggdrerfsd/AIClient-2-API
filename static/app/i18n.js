@@ -22,6 +22,17 @@ const translations = {
         'header.restart.success': '重启请求已发送，服务即将重启',
         'header.restart.reconnecting': '正在重新连接...',
         'header.restart.failed': '重启服务失败',
+        'header.changePassword': '修改密码',
+        'header.newPassword': '新密码',
+        'header.newPasswordPlaceholder': '请输入新密码',
+        'header.confirmPassword': '确认密码',
+        'header.confirmPasswordPlaceholder': '请再次输入新密码',
+        'header.changePasswordNote': '修改后需要重新登录',
+        'header.passwordEmpty': '密码不能为空',
+        'header.passwordTooShort': '密码长度不能少于4位',
+        'header.passwordMismatch': '两次输入的密码不一致',
+        'header.passwordChanged': '密码修改成功，请重新登录',
+        'header.passwordChangeFailed': '密码修改失败',
         
         // Navigation
         'nav.main': '主导航',
@@ -66,6 +77,8 @@ const translations = {
         'dashboard.memoryUsage': '内存使用',
         'dashboard.cpuUsage': 'CPU 使用',
         'dashboard.providerStatus': '提供商节点状态',
+        'dashboard.usageSummary': '用量概览',
+        'dashboard.usageClickHint': '点击查看详细用量',
         'dashboard.advancedInfo': '可用模型列表',
         'dashboard.expandMore': '展开更多',
         'dashboard.serviceMode': '运行模式',
@@ -1126,6 +1139,17 @@ const translations = {
         'header.restart.success': 'Restart request sent, service will restart shortly',
         'header.restart.reconnecting': 'Reconnecting...',
         'header.restart.failed': 'Failed to restart service',
+        'header.changePassword': 'Change Password',
+        'header.newPassword': 'New Password',
+        'header.newPasswordPlaceholder': 'Enter new password',
+        'header.confirmPassword': 'Confirm Password',
+        'header.confirmPasswordPlaceholder': 'Enter new password again',
+        'header.changePasswordNote': 'You will need to log in again after changing the password',
+        'header.passwordEmpty': 'Password cannot be empty',
+        'header.passwordTooShort': 'Password must be at least 4 characters',
+        'header.passwordMismatch': 'Passwords do not match',
+        'header.passwordChanged': 'Password changed successfully, please log in again',
+        'header.passwordChangeFailed': 'Failed to change password',
         
         // Navigation
         'nav.main': 'Main Navigation',
@@ -1170,6 +1194,8 @@ const translations = {
         'dashboard.memoryUsage': 'Memory Usage',
         'dashboard.cpuUsage': 'CPU Usage',
         'dashboard.providerStatus': 'Provider Nodes Status',
+        'dashboard.usageSummary': 'Usage Overview',
+        'dashboard.usageClickHint': 'Click to view detailed usage',
         'dashboard.advancedInfo': 'Available Models List',
         'dashboard.expandMore': 'Expand More',
         'dashboard.serviceMode': 'Service Mode',
@@ -2241,86 +2267,8 @@ export function setLanguage(lang) {
         currentLanguage = lang;
         localStorage.setItem('language', lang);
         updatePageLanguage();
-        // 更新图片
-        updateDashboardImages(lang);
         // 触发语言切换事件
         window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }));
-    }
-}
-
-// 更新仪表盘图片
-function updateDashboardImages(lang) {
-    const sponsorImg = document.getElementById('sponsor-img');
-    const sponsorTitle = document.getElementById('sponsor-title');
-    const sponsorDesc = document.getElementById('sponsor-desc');
-    
-    const wechatImg = document.getElementById('wechat-img');
-    const wechatIcon = document.getElementById('wechat-icon');
-    const wechatTitle = document.getElementById('wechat-title');
-    const wechatDesc = document.getElementById('wechat-desc');
-
-    if (lang === 'en-US') {
-        // 更新赞助图片
-        if (sponsorImg) {
-            sponsorImg.src = 'static/coffee.png';
-            sponsorImg.alt = 'Buy me a coffee';
-            if (sponsorTitle) {
-                sponsorTitle.setAttribute('data-i18n', 'dashboard.contact.coffee');
-                sponsorTitle.textContent = translations['en-US']['dashboard.contact.coffee'];
-            }
-            if (sponsorDesc) {
-                sponsorDesc.setAttribute('data-i18n', 'dashboard.contact.coffeeDesc');
-                sponsorDesc.textContent = translations['en-US']['dashboard.contact.coffeeDesc'];
-            }
-        }
-        
-        // 更新联系方式图片 (WeChat -> X.com)
-        if (wechatImg) {
-            wechatImg.src = 'static/x.com.png';
-            wechatImg.alt = 'X.com';
-            if (wechatIcon) {
-                wechatIcon.className = 'fab fa-x-twitter';
-            }
-            if (wechatTitle) {
-                wechatTitle.setAttribute('data-i18n', 'dashboard.contact.x');
-                wechatTitle.textContent = translations['en-US']['dashboard.contact.x'] || 'Follow on X.com';
-            }
-            if (wechatDesc) {
-                wechatDesc.setAttribute('data-i18n', 'dashboard.contact.xDesc');
-                wechatDesc.textContent = translations['en-US']['dashboard.contact.xDesc'] || 'Follow us on X for latest updates';
-            }
-        }
-    } else {
-        // 更新赞助图片
-        if (sponsorImg) {
-            sponsorImg.src = 'static/sponsor.png';
-            sponsorImg.alt = '赞助二维码';
-            if (sponsorTitle) {
-                sponsorTitle.setAttribute('data-i18n', 'dashboard.contact.sponsor');
-                sponsorTitle.textContent = translations['zh-CN']['dashboard.contact.sponsor'];
-            }
-            if (sponsorDesc) {
-                sponsorDesc.setAttribute('data-i18n', 'dashboard.contact.sponsorDesc');
-                sponsorDesc.textContent = translations['zh-CN']['dashboard.contact.sponsorDesc'];
-            }
-        }
-
-        // 更新联系方式图片 (X.com -> WeChat)
-        if (wechatImg) {
-            wechatImg.src = 'static/wechat.png';
-            wechatImg.alt = '微信二维码';
-            if (wechatIcon) {
-                wechatIcon.className = 'fab fa-weixin';
-            }
-            if (wechatTitle) {
-                wechatTitle.setAttribute('data-i18n', 'dashboard.contact.wechat');
-                wechatTitle.textContent = translations['zh-CN']['dashboard.contact.wechat'];
-            }
-            if (wechatDesc) {
-                wechatDesc.setAttribute('data-i18n', 'dashboard.contact.wechatDesc');
-                wechatDesc.textContent = translations['zh-CN']['dashboard.contact.wechatDesc'];
-            }
-        }
     }
 }
 

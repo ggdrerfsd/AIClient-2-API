@@ -1016,3 +1016,218 @@ function formatDate(dateStr) {
         return dateStr;
     }
 }
+
+/**
+ * 加载并渲染仪表盘用量摘要
+ */
+export async function loadDashboardUsageSummary() {
+    const panel = document.getElementById('dashboardUsagePanel');
+    const grid = document.getElementById('dashboardUsageGrid');
+    if (!panel || !grid) return;
+
+    try {
+        const response = await fetch('/api/usage', {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderDashboardUsageSummary(data, panel, grid);
+    } catch (error) {
+        console.error('加载仪表盘用量摘要失败:', error);
+        panel.style.display = 'none';
+    }
+}
+
+/**
+ * 刷新仪表盘用量摘要（强制从服务器获取）
+ */
+export async function refreshDashboardUsageSummary() {
+    const panel = document.getElementById('dashboardUsagePanel');
+    const grid = document.getElementById('dashboardUsageGrid');
+    const refreshBtn = document.getElementById('refreshDashboardUsageBtn');
+    if (!panel || !grid) return;
+
+    if (refreshBtn) refreshBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/usage?refresh=true', {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderDashboardUsageSummary(data, panel, grid);
+        showToast(t('common.success'), t('common.refresh.success'), 'success');
+    } catch (error) {
+        console.error('刷新仪表盘用量摘要失败:', error);
+        showToast(t('common.error'), t('common.refresh.failed') + ': ' + error.message, 'error');
+    } finally {
+        if (refreshBtn) refreshBtn.disabled = false;
+    }
+}
+
+/**
+ * 渲染仪表盘用量摘要
+ */
+function renderDashboardUsageSummary(data, panel, grid) {
+    if (!data || !data.providers || Object.keys(data.providers).length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    // 按提供商分组收集有效实例
+    const providerSummaries = [];
+
+    const displayOrder = currentProviderConfigs
+        ? currentProviderConfigs.map(c => c.id)
+        : Object.keys(data.providers);
+
+    for (const providerType of displayOrder) {
+        const providerData = data.providers[providerType];
+        if (!providerData || !providerData.instances) continue;
+
+        // 跳过不可见的提供商
+        if (currentProviderConfigs) {
+            const config = currentProviderConfigs.find(c => c.id === providerType);
+            if (config && config.visible === false) continue;
+        }
+
+        const validInstances = providerData.instances.filter(inst =>
+            inst.success &&
+            !inst.isDisabled &&
+            inst.error !== '服务实例未初始化' &&
+            inst.error !== 'Service instance not initialized'
+        );
+
+        if (validInstances.length === 0) continue;
+
+        // 汇总该提供商下所有实例的用量
+        let totalUsed = 0;
+        let totalLimit = 0;
+        let hasCodex = false;
+        let codexPercent = 0;
+        let codexResetSeconds = 0;
+        let resetTime = null;
+        let instanceCount = validInstances.length;
+
+        for (const instance of validInstances) {
+            if (!instance.usage || !instance.usage.usageBreakdown) continue;
+            const total = calculateTotalUsage(instance.usage.usageBreakdown);
+            if (!total.hasData) continue;
+
+            if (total.isCodex) {
+                hasCodex = true;
+                codexPercent = Math.max(codexPercent, total.percent);
+                codexResetSeconds = total.resetAfterSeconds || 0;
+            } else {
+                totalUsed += total.used;
+                totalLimit += total.limit;
+            }
+
+            // 取第一个有重置时间的
+            if (!resetTime) {
+                for (const b of instance.usage.usageBreakdown) {
+                    if (b.resetTime && b.resetTime !== '--') {
+                        resetTime = b.resetTime;
+                        break;
+                    }
+                    if (b.rateLimit && b.rateLimit.secondary_window) {
+                        codexResetSeconds = b.rateLimit.secondary_window.reset_after_seconds || 0;
+                    }
+                }
+            }
+        }
+
+        let percent, usageText, resetText;
+
+        if (hasCodex) {
+            percent = codexPercent;
+            usageText = `${percent.toFixed(1)}%`;
+            resetText = codexResetSeconds > 0 ? formatTimeRemaining(codexResetSeconds) : null;
+        } else if (totalLimit > 0) {
+            percent = Math.min(100, (totalUsed / totalLimit) * 100);
+            usageText = `${formatNumber(totalUsed)} / ${formatNumber(totalLimit)}`;
+            resetText = resetTime ? formatDate(resetTime) : null;
+        } else {
+            continue;
+        }
+
+        providerSummaries.push({
+            providerType,
+            displayName: getProviderDisplayName(providerType),
+            icon: getProviderIcon(providerType),
+            percent,
+            usageText,
+            resetText,
+            hasCodex,
+            instanceCount
+        });
+    }
+
+    if (providerSummaries.length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+    grid.innerHTML = '';
+
+    for (const summary of providerSummaries) {
+        const progressClass = summary.percent >= 90 ? 'danger' : (summary.percent >= 70 ? 'warning' : '');
+
+        const card = document.createElement('div');
+        card.className = 'dashboard-usage-card';
+        card.style.cursor = 'pointer';
+        card.title = t('dashboard.usageClickHint') || '点击查看详细用量';
+        card.addEventListener('click', () => {
+            const usageNav = document.querySelector('[data-section="usage"]');
+            if (usageNav) usageNav.click();
+        });
+
+        let footerHTML = '';
+        if (summary.resetText) {
+            const label = summary.hasCodex
+                ? (t('usage.resetInfo', { time: summary.resetText }))
+                : (t('usage.card.resetAt', { time: summary.resetText }));
+            footerHTML = `
+                <div class="dashboard-usage-card-footer">
+                    <span class="usage-detail">${summary.usageText}</span>
+                    <span class="reset-time"><i class="fas fa-history"></i> ${label}</span>
+                </div>
+            `;
+        } else {
+            footerHTML = `
+                <div class="dashboard-usage-card-footer">
+                    <span class="usage-detail">${summary.usageText}</span>
+                </div>
+            `;
+        }
+
+        const instancesHTML = summary.instanceCount > 1
+            ? `<div class="dashboard-usage-instances"><i class="fas fa-server"></i> ${t('usage.group.instances', { count: summary.instanceCount })}</div>`
+            : '';
+
+        card.innerHTML = `
+            <div class="dashboard-usage-card-header">
+                <span class="dashboard-usage-card-name"><i class="${summary.icon}"></i> ${summary.displayName}</span>
+                <span class="dashboard-usage-card-percent">${summary.percent.toFixed(1)}%</span>
+            </div>
+            <div class="dashboard-usage-progress ${progressClass}">
+                <div class="progress-fill" style="width: ${summary.percent}%"></div>
+            </div>
+            ${footerHTML}
+            ${instancesHTML}
+        `;
+
+        grid.appendChild(card);
+    }
+}

@@ -77,7 +77,9 @@ import {
 
 import {
     initUsageManager,
-    refreshUsage
+    refreshUsage,
+    loadDashboardUsageSummary,
+    refreshDashboardUsageSummary
 } from './usage-manager.js';
 
 import {
@@ -138,7 +140,9 @@ function initApp() {
     initAccessManager(); // 初始化快速接入页面
     initUploadConfigManager(); // 初始化配置管理功能
     initUsageManager(); // 初始化用量管理功能
+    initDashboardUsage(); // 初始化仪表盘用量摘要
     initImageZoom(); // 初始化图片放大功能
+    initChangePassword(); // 初始化修改密码功能
     initPluginManager(); // 初始化插件管理功能
     initTutorialManager(); // 初始化教程管理功能
     initPlaygroundManager(); // 初始化 Playground
@@ -175,6 +179,145 @@ function initApp() {
         }
     }, REFRESH_INTERVALS.SYSTEM_INFO);
 
+}
+
+/**
+ * 初始化仪表盘用量摘要
+ */
+function initDashboardUsage() {
+    loadDashboardUsageSummary();
+
+    const refreshBtn = document.getElementById('refreshDashboardUsageBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            refreshDashboardUsageSummary();
+        });
+    }
+}
+
+/**
+ * 初始化修改密码功能
+ */
+function initChangePassword() {
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    if (!changePasswordBtn) return;
+
+    changePasswordBtn.addEventListener('click', () => {
+        showChangePasswordModal();
+    });
+}
+
+/**
+ * 显示修改密码模态框
+ */
+function showChangePasswordModal() {
+    // 移除已有的模态框
+    const existing = document.getElementById('changePasswordModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'changePasswordModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> <span data-i18n="header.changePassword">${t('header.changePassword')}</span></h3>
+                <button class="modal-close" id="closeChangePasswordModal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="newPasswordInput" data-i18n="header.newPassword">${t('header.newPassword')}</label>
+                    <div style="position: relative;">
+                        <input type="password" id="newPasswordInput" class="form-control"
+                               placeholder="${t('header.newPasswordPlaceholder')}"
+                               autocomplete="new-password" style="padding-right: 40px;">
+                        <button type="button" class="password-toggle" data-target="newPasswordInput"
+                                aria-label="显示/隐藏密码"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="confirmPasswordInput" data-i18n="header.confirmPassword">${t('header.confirmPassword')}</label>
+                    <div style="position: relative;">
+                        <input type="password" id="confirmPasswordInput" class="form-control"
+                               placeholder="${t('header.confirmPasswordPlaceholder')}"
+                               autocomplete="new-password" style="padding-right: 40px;">
+                        <button type="button" class="password-toggle" data-target="confirmPasswordInput"
+                                aria-label="显示/隐藏密码"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="form-text" style="color: var(--text-secondary); display: block; margin-bottom: 1rem;"
+                       data-i18n="header.changePasswordNote">${t('header.changePasswordNote')}</small>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color);">
+                <button class="btn btn-outline" id="cancelChangePassword" data-i18n="common.cancel">${t('common.cancel')}</button>
+                <button class="btn btn-primary" id="confirmChangePassword" data-i18n="common.confirm">${t('common.confirm')}</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // 密码显示/隐藏切换
+    modal.querySelectorAll('.password-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.querySelector('i').className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                btn.querySelector('i').className = 'fas fa-eye';
+            }
+        });
+    });
+
+    // 关闭
+    const close = () => modal.remove();
+    document.getElementById('closeChangePasswordModal').addEventListener('click', close);
+    document.getElementById('cancelChangePassword').addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    // 确认修改
+    document.getElementById('confirmChangePassword').addEventListener('click', async () => {
+        const newPassword = document.getElementById('newPasswordInput').value;
+        const confirmPassword = document.getElementById('confirmPasswordInput').value;
+
+        if (!newPassword || newPassword.trim() === '') {
+            showToast(t('common.error'), t('header.passwordEmpty'), 'error');
+            return;
+        }
+
+        if (newPassword.trim().length < 4) {
+            showToast(t('common.error'), t('header.passwordTooShort'), 'error');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showToast(t('common.error'), t('header.passwordMismatch'), 'error');
+            return;
+        }
+
+        try {
+            await window.apiClient.post('/admin-password', { password: newPassword.trim() });
+            showToast(t('common.success'), t('header.passwordChanged'), 'success');
+            close();
+        } catch (error) {
+            showToast(t('common.error'), t('header.passwordChangeFailed') + ': ' + (error.message || ''), 'error');
+        }
+    });
+
+    // 聚焦到输入框
+    setTimeout(() => document.getElementById('newPasswordInput')?.focus(), 100);
 }
 
 /**
