@@ -2252,7 +2252,7 @@ async saveCredentialsToFile(filePath, newData) {
                             continue;
                         }
                         lastContentEvent = event.data;
-                        yield { type: 'content', content: sanitizeKiroOutput(event.data) };
+                        yield { type: 'content', content: event.data };
                     } else if (event.type === 'toolUse') {
                         yield { type: 'toolUse', toolUse: event.data };
                     } else if (event.type === 'toolUseInput') {
