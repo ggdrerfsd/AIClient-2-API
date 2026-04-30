@@ -2329,8 +2329,6 @@ function updatePageLanguage() {
 export function initI18n() {
     // 设置初始语言
     updatePageLanguage();
-    // 设置初始图片
-    updateDashboardImages(currentLanguage);
     
     // 监听 DOM 变化，自动翻译新添加的元素
     const observer = new MutationObserver((mutations) => {

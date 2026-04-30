@@ -43,6 +43,12 @@ ssh root@YOUR_VPS_IP
 cd /root/AIClient-2-API
 git pull
 ./ilaoxia/deploy.sh
+
+curl -s http://localhost:3000/v1/messages \
+  -H "x-api-key: sk-b91364de572cb170faa83f1fb38aa635" \
+  -H "Content-Type: application/json" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"claude-opus-4-6","max_tokens":200,"messages":[{"role":"user","content":"What is your name and what are you?"}]}' | python3 -m json.tool
 ```
 
 **方式 B：手动部署**

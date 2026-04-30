@@ -1,7 +1,6 @@
 <link rel="stylesheet" href="components/section-dashboard.css">
 <!-- Dashboard Section -->
-<section id="dashboard" class="section active" aria-labelledby="dashboard-title">
-    <h2 id="dashboard-title" data-i18n="dashboard.title">系统概览</h2>
+<section id="dashboard" class="section active">
 
     <!-- 1. Dashboard Usage Summary Panel -->
     <div class="dashboard-usage-panel" id="dashboardUsagePanel" style="display: none;">
@@ -19,14 +18,13 @@
         </div>
     </div>
 
-    <!-- 2. System Information Panel (merged with uptime) -->
+    <!-- 2. System Information Panel -->
     <div class="system-info-panel">
         <div class="system-info-header">
             <h3 data-i18n="dashboard.systemInfo">系统信息</h3>
             <div class="update-controls">
                 <div id="versionSelectWrapper" style="display: none; margin-right: 8px;">
                     <select id="versionSelect" class="form-control select-sm" style="height: 32px; padding: 0 8px; font-size: 13px; min-width: 120px;">
-                        <!-- Versions will be loaded here -->
                     </select>
                 </div>
                 <button id="checkUpdateBtn" class="btn btn-outline btn-sm" data-i18n-title="dashboard.update.checkTitle" title="检查更新">
@@ -37,80 +35,79 @@
                 </button>
             </div>
         </div>
-        <div class="info-grid">
-            <div class="info-item info-item-highlight">
-                <span class="info-label">
-                    <i class="fas fa-clock"></i> <span data-i18n="dashboard.uptime">运行时间</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="uptime">--</span>
+
+        <!-- Hero: uptime + version -->
+        <div class="sysinfo-hero">
+            <div class="sysinfo-hero-item">
+                <div class="sysinfo-hero-icon"><i class="fas fa-clock"></i></div>
+                <div class="sysinfo-hero-body">
+                    <span class="sysinfo-hero-label" data-i18n="dashboard.uptime">运行时间</span>
+                    <span class="sysinfo-hero-value" id="uptime">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-tag"></i> <span data-i18n="dashboard.version">版本号</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="appVersion">--</span>
-                    <span class="update-badge" id="updateBadge" style="display: none;">
-                        <i class="fas fa-arrow-up"></i> <span id="latestVersionText">--</span>
+            <div class="sysinfo-hero-item">
+                <div class="sysinfo-hero-icon"><i class="fas fa-tag"></i></div>
+                <div class="sysinfo-hero-body">
+                    <span class="sysinfo-hero-label" data-i18n="dashboard.version">版本号</span>
+                    <span class="sysinfo-hero-value">
+                        <span id="appVersion">--</span>
+                        <span class="update-badge" id="updateBadge" style="display: none;">
+                            <i class="fas fa-arrow-up"></i> <span id="latestVersionText">--</span>
+                        </span>
                     </span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-clock"></i> <span data-i18n="dashboard.serverTime">服务器时间</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="serverTime">--</span>
+            <div class="sysinfo-hero-item">
+                <div class="sysinfo-hero-icon"><i class="fas fa-calendar-alt"></i></div>
+                <div class="sysinfo-hero-body">
+                    <span class="sysinfo-hero-label" data-i18n="dashboard.serverTime">服务器时间</span>
+                    <span class="sysinfo-hero-value" id="serverTime">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-cogs"></i> <span data-i18n="dashboard.serviceMode">运行模式</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="serviceMode">--</span>
+        </div>
+
+        <!-- Detail grid -->
+        <div class="sysinfo-grid">
+            <div class="sysinfo-card">
+                <i class="fas fa-cogs"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.serviceMode">运行模式</span>
+                    <span class="sysinfo-card-value" id="serviceMode">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-code"></i> <span data-i18n="dashboard.nodeVersion">Node.js版本</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="nodeVersion">--</span>
+            <div class="sysinfo-card">
+                <i class="fas fa-code"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.nodeVersion">Node.js</span>
+                    <span class="sysinfo-card-value" id="nodeVersion">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-desktop"></i> <span data-i18n="dashboard.platform">操作系统</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="platformInfo">--</span>
+            <div class="sysinfo-card">
+                <i class="fas fa-desktop"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.platform">操作系统</span>
+                    <span class="sysinfo-card-value" id="platformInfo">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-memory"></i> <span data-i18n="dashboard.memoryUsage">内存使用</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="memoryUsage">--</span>
+            <div class="sysinfo-card">
+                <i class="fas fa-memory"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.memoryUsage">内存</span>
+                    <span class="sysinfo-card-value" id="memoryUsage">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-microchip"></i> <span data-i18n="dashboard.cpuUsage">CPU 使用</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="cpuUsage">--</span>
+            <div class="sysinfo-card">
+                <i class="fas fa-microchip"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.cpuUsage">CPU</span>
+                    <span class="sysinfo-card-value" id="cpuUsage">--</span>
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-microchip"></i> <span data-i18n="dashboard.processPid">进程 PID</span>
-                </span>
-                <div class="version-display-wrapper">
-                    <span class="info-value" id="processPid">--</span>
+            <div class="sysinfo-card">
+                <i class="fas fa-fingerprint"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.processPid">PID</span>
+                    <span class="sysinfo-card-value" id="processPid">--</span>
                 </div>
             </div>
         </div>
