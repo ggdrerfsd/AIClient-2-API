@@ -1076,7 +1076,7 @@ export async function refreshDashboardUsageSummary() {
 }
 
 /**
- * 渲染仪表盘用量摘要
+ * 渲染仪表盘用量摘要 — 按提供商分组，展示每个实例
  */
 function renderDashboardUsageSummary(data, panel, grid) {
     if (!data || !data.providers || Object.keys(data.providers).length === 0) {
@@ -1084,150 +1084,141 @@ function renderDashboardUsageSummary(data, panel, grid) {
         return;
     }
 
-    // 按提供商分组收集有效实例
-    const providerSummaries = [];
-
     const displayOrder = currentProviderConfigs
         ? currentProviderConfigs.map(c => c.id)
         : Object.keys(data.providers);
+
+    let hasAnyInstance = false;
+    const fragments = [];
 
     for (const providerType of displayOrder) {
         const providerData = data.providers[providerType];
         if (!providerData || !providerData.instances) continue;
 
-        // 跳过不可见的提供商
         if (currentProviderConfigs) {
             const config = currentProviderConfigs.find(c => c.id === providerType);
             if (config && config.visible === false) continue;
         }
 
         const validInstances = providerData.instances.filter(inst =>
-            inst.success &&
             !inst.isDisabled &&
             inst.error !== '服务实例未初始化' &&
             inst.error !== 'Service instance not initialized'
         );
 
         if (validInstances.length === 0) continue;
+        hasAnyInstance = true;
 
-        // 汇总该提供商下所有实例的用量
-        let totalUsed = 0;
-        let totalLimit = 0;
-        let hasCodex = false;
-        let codexPercent = 0;
-        let codexResetSeconds = 0;
-        let resetTime = null;
-        let instanceCount = validInstances.length;
+        const providerDisplayName = getProviderDisplayName(providerType);
+        const providerIcon = getProviderIcon(providerType);
+        const showUsage = shouldShowUsage(providerType);
+
+        // 提供商分组容器
+        const group = document.createElement('div');
+        group.className = 'dash-usage-group';
+
+        // 分组头部（可折叠）
+        const header = document.createElement('div');
+        header.className = 'dash-usage-group-header';
+        header.innerHTML = `
+            <div class="dash-usage-group-title">
+                <i class="fas fa-chevron-down dash-usage-toggle-icon"></i>
+                <i class="${providerIcon} dash-usage-provider-icon"></i>
+                <span>${providerDisplayName}</span>
+                <span class="dash-usage-group-count">${validInstances.length}</span>
+            </div>
+        `;
+        header.addEventListener('click', () => {
+            group.classList.toggle('collapsed');
+        });
+        group.appendChild(header);
+
+        // 实例滚动容器
+        const scrollWrap = document.createElement('div');
+        scrollWrap.className = 'dash-usage-scroll-wrap';
+
+        const instanceRow = document.createElement('div');
+        instanceRow.className = 'dash-usage-instance-row';
 
         for (const instance of validInstances) {
-            if (!instance.usage || !instance.usage.usageBreakdown) continue;
-            const total = calculateTotalUsage(instance.usage.usageBreakdown);
-            if (!total.hasData) continue;
+            const card = document.createElement('div');
+            card.className = 'dash-usage-instance-card';
 
-            if (total.isCodex) {
-                hasCodex = true;
-                codexPercent = Math.max(codexPercent, total.percent);
-                codexResetSeconds = total.resetAfterSeconds || 0;
-            } else {
-                totalUsed += total.used;
-                totalLimit += total.limit;
-            }
+            const displayName = instance.name || instance.uuid;
+            const statusIcon = instance.success
+                ? '<i class="fas fa-check-circle dash-status-ok"></i>'
+                : '<i class="fas fa-times-circle dash-status-err"></i>';
 
-            // 取第一个有重置时间的
-            if (!resetTime) {
-                for (const b of instance.usage.usageBreakdown) {
-                    if (b.resetTime && b.resetTime !== '--') {
-                        resetTime = b.resetTime;
-                        break;
+            let progressHTML = '';
+            let footerHTML = '';
+
+            if (instance.success && instance.usage && instance.usage.usageBreakdown) {
+                const total = calculateTotalUsage(instance.usage.usageBreakdown);
+                if (total.hasData && showUsage) {
+                    const pct = total.percent;
+                    const progressClass = pct >= 90 ? 'danger' : (pct >= 70 ? 'warning' : '');
+                    const displayValue = total.isCodex
+                        ? `${pct.toFixed(1)}%`
+                        : `${formatNumber(total.used)} / ${formatNumber(total.limit)}`;
+
+                    progressHTML = `
+                        <div class="dash-usage-progress ${progressClass}">
+                            <div class="progress-fill" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="dash-usage-pct">${pct.toFixed(1)}%</div>
+                    `;
+
+                    // 重置时间
+                    let resetText = '';
+                    if (total.isCodex && total.resetAfterSeconds > 0) {
+                        resetText = formatTimeRemaining(total.resetAfterSeconds);
+                    } else {
+                        const entry = instance.usage.usageBreakdown.find(b => b.resetTime && b.resetTime !== '--');
+                        if (entry) resetText = formatDate(entry.resetTime);
                     }
-                    if (b.rateLimit && b.rateLimit.secondary_window) {
-                        codexResetSeconds = b.rateLimit.secondary_window.reset_after_seconds || 0;
-                    }
+
+                    footerHTML = `
+                        <div class="dash-usage-card-foot">
+                            <span class="dash-usage-val">${displayValue}</span>
+                            ${resetText ? `<span class="dash-usage-reset"><i class="fas fa-history"></i> ${resetText}</span>` : ''}
+                        </div>
+                    `;
                 }
+            } else if (instance.error) {
+                footerHTML = `<div class="dash-usage-card-foot"><span class="dash-usage-err-msg">${instance.error}</span></div>`;
             }
+
+            card.innerHTML = `
+                <div class="dash-usage-card-head">
+                    <span class="dash-usage-name" title="${displayName}">${displayName}</span>
+                    ${statusIcon}
+                </div>
+                ${progressHTML}
+                ${footerHTML}
+            `;
+
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => {
+                const usageNav = document.querySelector('[data-section="usage"]');
+                if (usageNav) usageNav.click();
+            });
+
+            instanceRow.appendChild(card);
         }
 
-        let percent, usageText, resetText;
-
-        if (hasCodex) {
-            percent = codexPercent;
-            usageText = `${percent.toFixed(1)}%`;
-            resetText = codexResetSeconds > 0 ? formatTimeRemaining(codexResetSeconds) : null;
-        } else if (totalLimit > 0) {
-            percent = Math.min(100, (totalUsed / totalLimit) * 100);
-            usageText = `${formatNumber(totalUsed)} / ${formatNumber(totalLimit)}`;
-            resetText = resetTime ? formatDate(resetTime) : null;
-        } else {
-            continue;
-        }
-
-        providerSummaries.push({
-            providerType,
-            displayName: getProviderDisplayName(providerType),
-            icon: getProviderIcon(providerType),
-            percent,
-            usageText,
-            resetText,
-            hasCodex,
-            instanceCount
-        });
+        scrollWrap.appendChild(instanceRow);
+        group.appendChild(scrollWrap);
+        fragments.push(group);
     }
 
-    if (providerSummaries.length === 0) {
+    if (!hasAnyInstance) {
         panel.style.display = 'none';
         return;
     }
 
     panel.style.display = 'block';
     grid.innerHTML = '';
-
-    for (const summary of providerSummaries) {
-        const progressClass = summary.percent >= 90 ? 'danger' : (summary.percent >= 70 ? 'warning' : '');
-
-        const card = document.createElement('div');
-        card.className = 'dashboard-usage-card';
-        card.style.cursor = 'pointer';
-        card.title = t('dashboard.usageClickHint') || '点击查看详细用量';
-        card.addEventListener('click', () => {
-            const usageNav = document.querySelector('[data-section="usage"]');
-            if (usageNav) usageNav.click();
-        });
-
-        let footerHTML = '';
-        if (summary.resetText) {
-            const label = summary.hasCodex
-                ? (t('usage.resetInfo', { time: summary.resetText }))
-                : (t('usage.card.resetAt', { time: summary.resetText }));
-            footerHTML = `
-                <div class="dashboard-usage-card-footer">
-                    <span class="usage-detail">${summary.usageText}</span>
-                    <span class="reset-time"><i class="fas fa-history"></i> ${label}</span>
-                </div>
-            `;
-        } else {
-            footerHTML = `
-                <div class="dashboard-usage-card-footer">
-                    <span class="usage-detail">${summary.usageText}</span>
-                </div>
-            `;
-        }
-
-        const instancesHTML = summary.instanceCount > 1
-            ? `<div class="dashboard-usage-instances"><i class="fas fa-server"></i> ${t('usage.group.instances', { count: summary.instanceCount })}</div>`
-            : '';
-
-        card.innerHTML = `
-            <div class="dashboard-usage-card-header">
-                <span class="dashboard-usage-card-name"><i class="${summary.icon}"></i> ${summary.displayName}</span>
-                <span class="dashboard-usage-card-percent">${summary.percent.toFixed(1)}%</span>
-            </div>
-            <div class="dashboard-usage-progress ${progressClass}">
-                <div class="progress-fill" style="width: ${summary.percent}%"></div>
-            </div>
-            ${footerHTML}
-            ${instancesHTML}
-        `;
-
-        grid.appendChild(card);
+    for (const frag of fragments) {
+        grid.appendChild(frag);
     }
 }

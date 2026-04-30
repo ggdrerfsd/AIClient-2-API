@@ -263,6 +263,11 @@ function showChangePasswordModal() {
 
     document.body.appendChild(modal);
 
+    // 显示模态框（CSS 默认 display:none）
+    requestAnimationFrame(() => {
+        modal.style.display = 'flex';
+    });
+
     // 密码显示/隐藏切换
     modal.querySelectorAll('.password-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
