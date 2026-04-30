@@ -2,19 +2,8 @@
 <!-- Dashboard Section -->
 <section id="dashboard" class="section active" aria-labelledby="dashboard-title">
     <h2 id="dashboard-title" data-i18n="dashboard.title">系统概览</h2>
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="uptime">--</h3>
-                <p data-i18n="dashboard.uptime">运行时间</p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Dashboard Usage Summary Panel -->
+    <!-- 1. Dashboard Usage Summary Panel -->
     <div class="dashboard-usage-panel" id="dashboardUsagePanel" style="display: none;">
         <div class="system-info-header">
             <h3><i class="fas fa-chart-pie"></i> <span data-i18n="dashboard.usageSummary">用量概览</span></h3>
@@ -30,7 +19,7 @@
         </div>
     </div>
 
-    <!-- System Information Panel -->
+    <!-- 2. System Information Panel (merged with uptime) -->
     <div class="system-info-panel">
         <div class="system-info-header">
             <h3 data-i18n="dashboard.systemInfo">系统信息</h3>
@@ -49,6 +38,14 @@
             </div>
         </div>
         <div class="info-grid">
+            <div class="info-item info-item-highlight">
+                <span class="info-label">
+                    <i class="fas fa-clock"></i> <span data-i18n="dashboard.uptime">运行时间</span>
+                </span>
+                <div class="version-display-wrapper">
+                    <span class="info-value" id="uptime">--</span>
+                </div>
+            </div>
             <div class="info-item">
                 <span class="info-label">
                     <i class="fas fa-tag"></i> <span data-i18n="dashboard.version">版本号</span>
@@ -62,42 +59,10 @@
             </div>
             <div class="info-item">
                 <span class="info-label">
-                    <i class="fas fa-code"></i> <span data-i18n="dashboard.nodeVersion">Node.js版本</span>
-                </span>
-                <div class="version-display-wrapper">
-                <span class="info-value" id="nodeVersion">--</span>
-                </div>
-            </div>
-            <div class="info-item">
-                <span class="info-label">
                     <i class="fas fa-clock"></i> <span data-i18n="dashboard.serverTime">服务器时间</span>
                 </span>
                 <div class="version-display-wrapper">
-                <span class="info-value" id="serverTime">--</span>
-                </div>
-            </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-desktop"></i> <span data-i18n="dashboard.platform">操作系统</span>
-                </span>
-                <div class="version-display-wrapper">
-                <span class="info-value" id="platformInfo">--</span>
-                </div>
-            </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-memory"></i> <span data-i18n="dashboard.memoryUsage">内存使用</span>
-                </span>
-                <div class="version-display-wrapper">
-                <span class="info-value" id="memoryUsage">--</span>
-                </div>
-            </div>
-            <div class="info-item">
-                <span class="info-label">
-                    <i class="fas fa-microchip"></i> <span data-i18n="dashboard.cpuUsage">CPU 使用</span>
-                </span>
-                <div class="version-display-wrapper">
-                <span class="info-value" id="cpuUsage">--</span>
+                    <span class="info-value" id="serverTime">--</span>
                 </div>
             </div>
             <div class="info-item">
@@ -105,7 +70,39 @@
                     <i class="fas fa-cogs"></i> <span data-i18n="dashboard.serviceMode">运行模式</span>
                 </span>
                 <div class="version-display-wrapper">
-                <span class="info-value" id="serviceMode">--</span>
+                    <span class="info-value" id="serviceMode">--</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-label">
+                    <i class="fas fa-code"></i> <span data-i18n="dashboard.nodeVersion">Node.js版本</span>
+                </span>
+                <div class="version-display-wrapper">
+                    <span class="info-value" id="nodeVersion">--</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-label">
+                    <i class="fas fa-desktop"></i> <span data-i18n="dashboard.platform">操作系统</span>
+                </span>
+                <div class="version-display-wrapper">
+                    <span class="info-value" id="platformInfo">--</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-label">
+                    <i class="fas fa-memory"></i> <span data-i18n="dashboard.memoryUsage">内存使用</span>
+                </span>
+                <div class="version-display-wrapper">
+                    <span class="info-value" id="memoryUsage">--</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-label">
+                    <i class="fas fa-microchip"></i> <span data-i18n="dashboard.cpuUsage">CPU 使用</span>
+                </span>
+                <div class="version-display-wrapper">
+                    <span class="info-value" id="cpuUsage">--</span>
                 </div>
             </div>
             <div class="info-item">
@@ -113,7 +110,7 @@
                     <i class="fas fa-microchip"></i> <span data-i18n="dashboard.processPid">进程 PID</span>
                 </span>
                 <div class="version-display-wrapper">
-                <span class="info-value" id="processPid">--</span>
+                    <span class="info-value" id="processPid">--</span>
                 </div>
             </div>
         </div>
