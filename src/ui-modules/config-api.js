@@ -91,6 +91,7 @@ export async function handleGetConfig(req, res, currentConfig) {
         PROVIDER_POOLS_FILE_PATH: currentConfig.PROVIDER_POOLS_FILE_PATH,
         MAX_ERROR_COUNT: currentConfig.MAX_ERROR_COUNT,
         SYSTEM_PROMPT_REPLACEMENTS: currentConfig.SYSTEM_PROMPT_REPLACEMENTS,
+        OUTPUT_IDENTITY_SANITIZE_ENABLED: currentConfig.OUTPUT_IDENTITY_SANITIZE_ENABLED,
         WARMUP_TARGET: currentConfig.WARMUP_TARGET,
         REFRESH_CONCURRENCY_PER_PROVIDER: currentConfig.REFRESH_CONCURRENCY_PER_PROVIDER,
         providerFallbackChain: currentConfig.providerFallbackChain,
@@ -183,6 +184,7 @@ async function _handleUpdateConfig(req, res, currentConfig, body) {
             }
         }
         if (newConfig.PROMPT_LOG_BASE_NAME !== undefined) currentConfig.PROMPT_LOG_BASE_NAME = newConfig.PROMPT_LOG_BASE_NAME;
+        if (newConfig.OUTPUT_IDENTITY_SANITIZE_ENABLED !== undefined) currentConfig.OUTPUT_IDENTITY_SANITIZE_ENABLED = parseBooleanConfig(newConfig.OUTPUT_IDENTITY_SANITIZE_ENABLED);
         if (newConfig.PROMPT_LOG_MODE !== undefined) currentConfig.PROMPT_LOG_MODE = newConfig.PROMPT_LOG_MODE;
         if (newConfig.REQUEST_MAX_RETRIES !== undefined) {
             const v = Number(newConfig.REQUEST_MAX_RETRIES);

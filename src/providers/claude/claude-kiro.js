@@ -43,6 +43,54 @@ function sanitizeKiroOutput(text) {
         .replace(/an AI-powered development environment/gi, 'an AI assistant by Anthropic');
 }
 
+// 流式输出缓冲器：解决流式 chunk 拆分导致正则匹配失败的问题
+// 缓冲文本直到遇到安全的刷新点（空格、标点、换行），确保单词不被拆分
+// 注意：替换逻辑在 createTextDeltaEvents 中统一处理，此处只负责缓冲
+const SANITIZE_BUFFER_THRESHOLD = 30;
+class StreamSanitizer {
+    constructor() {
+        this.buffer = '';
+    }
+
+    push(chunk) {
+        this.buffer += chunk;
+        if (this.buffer.length < SANITIZE_BUFFER_THRESHOLD) {
+            return '';
+        }
+        const safeFlushPos = this._findSafeFlushPos();
+        if (safeFlushPos <= 0) {
+            // 缓冲区过大但没找到安全点，强制刷新避免无限缓冲
+            if (this.buffer.length > SANITIZE_BUFFER_THRESHOLD * 3) {
+                const result = this.buffer;
+                this.buffer = '';
+                return result;
+            }
+            return '';
+        }
+        const toFlush = this.buffer.slice(0, safeFlushPos);
+        this.buffer = this.buffer.slice(safeFlushPos);
+        return toFlush;
+    }
+
+    flush() {
+        if (!this.buffer) return '';
+        const result = this.buffer;
+        this.buffer = '';
+        return result;
+    }
+
+    _findSafeFlushPos() {
+        const searchStart = Math.max(0, SANITIZE_BUFFER_THRESHOLD - 15);
+        for (let i = this.buffer.length - 1; i >= searchStart; i--) {
+            const ch = this.buffer[i];
+            if (ch === ' ' || ch === '.' || ch === ',' || ch === '\n' || ch === '!' || ch === '?' || ch === ';' || ch === ':') {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+}
+
 const KIRO_CONSTANTS = {
     REFRESH_URL: 'https://prod.{{region}}.auth.desktop.kiro.dev/refreshToken',
     REFRESH_IDC_URL: 'https://oidc.{{region}}.amazonaws.com/token',
@@ -846,13 +894,6 @@ async saveCredentialsToFile(filePath, newData) {
     }
 
     /**
-     * Extract text content from OpenAI message format
-     */
-    getContentText(message) {
-        return getContentTextUtil(message);
-    }
-
-    /**
      * 清洗 tool_use 的 input 对象，移除空字符串 key 等不合法字段
      * Kiro API 不接受空字符串 key 的 JSON 对象（如 {"": "value"}）
      */
@@ -869,6 +910,13 @@ async saveCredentialsToFile(filePath, newData) {
             sanitized[key] = value;
         }
         return sanitized;
+    }
+
+    /**
+     * Extract text content from OpenAI message format
+     */
+    getContentText(message) {
+        return getContentTextUtil(message);
     }
 
     /**
@@ -1280,7 +1328,7 @@ async saveCredentialsToFile(filePath, newData) {
                 } else {
                     assistantResponseMessage.content = this.getContentText(message);
                 }
-
+                
                 if (thinkingText) {
                     assistantResponseMessage.content = assistantResponseMessage.content
                         ? `${KIRO_THINKING.START_TAG}${thinkingText}${KIRO_THINKING.END_TAG}\n\n${assistantResponseMessage.content}`
@@ -1291,7 +1339,7 @@ async saveCredentialsToFile(filePath, newData) {
                 if (toolUses.length > 0) {
                     assistantResponseMessage.toolUses = toolUses;
                 }
-
+                
                 history.push({ assistantResponseMessage });
             }
         }
@@ -1976,8 +2024,10 @@ async saveCredentialsToFile(filePath, newData) {
 
         try {
             let { responseText, toolCalls } = this._processApiResponse(response);
-            // 替换输出中的 Kiro 身份文本
-            responseText = sanitizeKiroOutput(responseText);
+            // 替换输出中的 Kiro 身份文本（受配置开关控制）
+            if (this.config.OUTPUT_IDENTITY_SANITIZE_ENABLED !== false) {
+                responseText = sanitizeKiroOutput(responseText);
+            }
             const thinkingType = requestBody?.thinking?.type;
             const thinkingRequested = (typeof thinkingType === 'string' &&
                 (thinkingType.toLowerCase() === 'enabled' || thinkingType.toLowerCase() === 'adaptive'))
@@ -2388,12 +2438,16 @@ async saveCredentialsToFile(filePath, newData) {
 
         const createTextDeltaEvents = (text) => {
             if (!text) return [];
+            // 在统一出口处替换 Kiro 身份文本，覆盖所有路径（thinking / 非 thinking）
+            // 受配置开关控制
+            const outputText = (this.config.OUTPUT_IDENTITY_SANITIZE_ENABLED !== false) ? sanitizeKiroOutput(text) : text;
+            if (!outputText) return [];
             const events = [];
             events.push(...ensureBlockStart('text'));
             events.push({
                 type: "content_block_delta",
                 index: streamState.textBlockIndex,
-                delta: { type: "text_delta", text }
+                delta: { type: "text_delta", text: outputText }
             });
             return events;
         };
@@ -2443,6 +2497,10 @@ async saveCredentialsToFile(filePath, newData) {
             };
 
             // 2. 流式接收并发送每个 content_block_delta
+            // 开关开启时使用 StreamSanitizer 缓冲文本，解决 chunk 拆词导致替换失败的问题
+            // 开关关闭时直接透传，不缓冲
+            const sanitizeEnabled = this.config.OUTPUT_IDENTITY_SANITIZE_ENABLED !== false;
+            const streamSanitizer = sanitizeEnabled ? new StreamSanitizer() : null;
             for await (const event of this.streamApiReal('', finalModel, requestBody)) {
                 if (event.type === 'contextUsage' && event.contextUsagePercentage) {
                     // 捕获上下文使用百分比（包含输入和输出的总使用量）
@@ -2451,7 +2509,14 @@ async saveCredentialsToFile(filePath, newData) {
                     totalContent += event.content;
 
                     if (!thinkingRequested) {
-                        yield* pushEvents(createTextDeltaEvents(event.content));
+                        if (streamSanitizer) {
+                            const sanitized = streamSanitizer.push(event.content);
+                            if (sanitized) {
+                                yield* pushEvents(createTextDeltaEvents(sanitized));
+                            }
+                        } else {
+                            yield* pushEvents(createTextDeltaEvents(event.content));
+                        }
                         continue;
                     }
 
@@ -2749,8 +2814,6 @@ async saveCredentialsToFile(filePath, newData) {
                 }
             }
 
-            yield* pushEvents(stopBlock(streamState.textBlockIndex));
-
             // 检查文本内容中的 bracket 格式工具调用
             const bracketToolCalls = parseBracketToolCalls(totalContent);
             if (bracketToolCalls && bracketToolCalls.length > 0) {
@@ -2764,6 +2827,19 @@ async saveCredentialsToFile(filePath, newData) {
             }
 
             // 3. 工具调用在流中实时发送，这里不再批量补发
+
+            // 刷新 StreamSanitizer 缓冲区中剩余的文本
+            if (streamSanitizer) {
+                const remainingSanitized = streamSanitizer.flush();
+                if (remainingSanitized) {
+                    yield* pushEvents(createTextDeltaEvents(remainingSanitized));
+                }
+            }
+
+            // 关闭文本块（如果还没关闭）
+            if (streamState.textBlockIndex != null && !streamState.stoppedBlocks.has(streamState.textBlockIndex)) {
+                yield* pushEvents(stopBlock(streamState.textBlockIndex));
+            }
 
             // 计算 output tokens
             const contentBlocksForCount = thinkingRequested

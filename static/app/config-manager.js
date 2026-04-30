@@ -352,6 +352,10 @@ async function loadConfiguration() {
         const credentialSwitchMaxRetriesEl = document.getElementById('credentialSwitchMaxRetries');
         if (credentialSwitchMaxRetriesEl) credentialSwitchMaxRetriesEl.value = data.CREDENTIAL_SWITCH_MAX_RETRIES || 5;
         if (rateLimitCooldownEnabledEl) rateLimitCooldownEnabledEl.checked = data.RATE_LIMIT_COOLDOWN_ENABLED || false;
+
+        // 输出身份替换开关
+        const outputIdentitySanitizeEnabledEl = document.getElementById('outputIdentitySanitizeEnabled');
+        if (outputIdentitySanitizeEnabledEl) outputIdentitySanitizeEnabledEl.checked = data.OUTPUT_IDENTITY_SANITIZE_ENABLED !== false;
         if (rateLimitCooldownMsEl) rateLimitCooldownMsEl.value = data.RATE_LIMIT_COOLDOWN_MS ?? 30000;
         
         if (cronNearMinutesEl) cronNearMinutesEl.value = data.CRON_NEAR_MINUTES || 1;
@@ -545,6 +549,7 @@ async function saveConfiguration(options = {}) {
     config.REQUEST_BASE_DELAY = parseInt(document.getElementById('requestBaseDelay')?.value || 1000);
     config.CREDENTIAL_SWITCH_MAX_RETRIES = parseInt(document.getElementById('credentialSwitchMaxRetries')?.value || 5);
     config.RATE_LIMIT_COOLDOWN_ENABLED = document.getElementById('rateLimitCooldownEnabled')?.checked || false;
+    config.OUTPUT_IDENTITY_SANITIZE_ENABLED = document.getElementById('outputIdentitySanitizeEnabled')?.checked ?? true;
     config.RATE_LIMIT_COOLDOWN_MS = parseInt(document.getElementById('rateLimitCooldownMs')?.value || 30000);
     config.CRON_NEAR_MINUTES = parseInt(document.getElementById('cronNearMinutes')?.value || 1);
     config.CRON_REFRESH_TOKEN = document.getElementById('cronRefreshToken')?.checked || false;

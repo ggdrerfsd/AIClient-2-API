@@ -429,6 +429,15 @@
                     </button>
                     <small class="form-text" data-i18n="config.advanced.systemPromptReplacementsNote">按顺序逐条对系统提示词（包括请求中的和文件中的）执行内容替换。</small>
                 </div>
+                <hr>
+                <div class="form-group">
+                    <label data-i18n="config.advanced.outputIdentitySanitize">输出身份替换（Kiro → Claude）</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="outputIdentitySanitizeEnabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <small class="form-text" data-i18n="config.advanced.outputIdentitySanitizeNote">启用后将自动替换响应中的 Kiro/CodeWhisperer 等身份文本为 Claude。关闭后输出原始响应。</small>
+                </div>
                 <div class="form-group">
                     <label for="adminPassword" data-i18n="config.advanced.adminPassword">后台登录密码</label>
                     <div class="password-input-wrapper">

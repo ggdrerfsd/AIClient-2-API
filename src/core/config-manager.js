@@ -98,6 +98,7 @@ export async function initializeConfig(args = process.argv.slice(2), configFileP
         MAX_ERROR_COUNT: 10, // 提供商最大错误次数
         CUSTOM_MODELS_FILE_PATH: null, // 自定义模型配置文件路径
         SYSTEM_PROMPT_REPLACEMENTS: [], // 系统提示词内容替换规则，例如: [{"old": "AI", "new": "Bot"}, {"old": "OpenAI", "new": "Gemini"}]
+        OUTPUT_IDENTITY_SANITIZE_ENABLED: true, // 启用输出身份文本替换（将 Kiro 替换为 Claude）
         SCHEDULED_HEALTH_CHECK: {
             enabled: false,
             interval: 600000,
