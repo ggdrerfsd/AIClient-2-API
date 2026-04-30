@@ -36,25 +36,13 @@
             </div>
         </div>
 
-        <!-- Hero: uptime + version -->
+        <!-- Hero: uptime + server time -->
         <div class="sysinfo-hero">
             <div class="sysinfo-hero-item">
                 <div class="sysinfo-hero-icon"><i class="fas fa-clock"></i></div>
                 <div class="sysinfo-hero-body">
                     <span class="sysinfo-hero-label" data-i18n="dashboard.uptime">运行时间</span>
                     <span class="sysinfo-hero-value" id="uptime">--</span>
-                </div>
-            </div>
-            <div class="sysinfo-hero-item">
-                <div class="sysinfo-hero-icon"><i class="fas fa-tag"></i></div>
-                <div class="sysinfo-hero-body">
-                    <span class="sysinfo-hero-label" data-i18n="dashboard.version">版本号</span>
-                    <span class="sysinfo-hero-value">
-                        <span id="appVersion">--</span>
-                        <span class="update-badge" id="updateBadge" style="display: none;">
-                            <i class="fas fa-arrow-up"></i> <span id="latestVersionText">--</span>
-                        </span>
-                    </span>
                 </div>
             </div>
             <div class="sysinfo-hero-item">
@@ -65,6 +53,9 @@
                 </div>
             </div>
         </div>
+        <!-- Hidden: keep appVersion element for JS compatibility -->
+        <span id="appVersion" style="display:none;">--</span>
+        <span class="update-badge" id="updateBadge" style="display:none;"><span id="latestVersionText">--</span></span>
 
         <!-- Detail grid -->
         <div class="sysinfo-grid">
