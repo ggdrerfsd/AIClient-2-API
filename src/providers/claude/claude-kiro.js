@@ -46,7 +46,7 @@ function sanitizeKiroOutput(text) {
 // 流式输出缓冲器：解决流式 chunk 拆分导致正则匹配失败的问题
 // 缓冲文本直到遇到安全的刷新点（空格、标点、换行），确保单词不被拆分
 // 注意：替换逻辑在 createTextDeltaEvents 中统一处理，此处只负责缓冲
-const SANITIZE_BUFFER_THRESHOLD = 30;
+const SANITIZE_BUFFER_THRESHOLD = 50;
 class StreamSanitizer {
     constructor() {
         this.buffer = '';
