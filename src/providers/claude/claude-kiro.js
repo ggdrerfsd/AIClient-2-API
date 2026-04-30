@@ -30,6 +30,19 @@ const KIRO_THINKING = {
     EFFORT_TAG: '<thinking_effort>',
 };
 
+// 输出文本替换：将 Kiro 相关身份文本替换为 Claude
+// 使用 \bKiro\b 匹配所有独立出现的 "Kiro"，一条规则覆盖所有场景
+function sanitizeKiroOutput(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text
+        .replace(/\bKiro\b/g, 'Claude')
+        .replace(/\bkiro\b/g, 'Claude')
+        .replace(/\bKIRO\b/g, 'Claude')
+        .replace(/\bAmazon Q Developer\b/gi, 'Claude')
+        .replace(/\bCodeWhisperer\b/gi, 'Claude')
+        .replace(/an AI-powered development environment/gi, 'an AI assistant by Anthropic');
+}
+
 const KIRO_CONSTANTS = {
     REFRESH_URL: 'https://prod.{{region}}.auth.desktop.kiro.dev/refreshToken',
     REFRESH_IDC_URL: 'https://oidc.{{region}}.amazonaws.com/token',
@@ -1943,7 +1956,9 @@ async saveCredentialsToFile(filePath, newData) {
         const response = await this.callApi('', finalModel, requestBody);
 
         try {
-            const { responseText, toolCalls } = this._processApiResponse(response);
+            let { responseText, toolCalls } = this._processApiResponse(response);
+            // 替换输出中的 Kiro 身份文本
+            responseText = sanitizeKiroOutput(responseText);
             const thinkingType = requestBody?.thinking?.type;
             const thinkingRequested = (typeof thinkingType === 'string' &&
                 (thinkingType.toLowerCase() === 'enabled' || thinkingType.toLowerCase() === 'adaptive'))
@@ -2168,7 +2183,7 @@ async saveCredentialsToFile(filePath, newData) {
                             continue;
                         }
                         lastContentEvent = event.data;
-                        yield { type: 'content', content: event.data };
+                        yield { type: 'content', content: sanitizeKiroOutput(event.data) };
                     } else if (event.type === 'toolUse') {
                         yield { type: 'toolUse', toolUse: event.data };
                     } else if (event.type === 'toolUseInput') {
