@@ -2453,12 +2453,14 @@ async saveCredentialsToFile(filePath, newData) {
         };
 
         const createThinkingDeltaEvents = (thinking) => {
+            if (!thinking && thinking !== '') return [];
+            const outputThinking = (this.config.OUTPUT_IDENTITY_SANITIZE_ENABLED !== false) ? sanitizeKiroOutput(thinking) : thinking;
             const events = [];
             events.push(...ensureBlockStart('thinking'));
             events.push({
                 type: "content_block_delta",
                 index: streamState.thinkingBlockIndex,
-                delta: { type: "thinking_delta", thinking }
+                delta: { type: "thinking_delta", thinking: outputThinking }
             });
             return events;
         };
@@ -2812,6 +2814,11 @@ async saveCredentialsToFile(filePath, newData) {
                     if (remaining) yield* pushEvents(createTextDeltaEvents(remaining));
                     streamState.buffer = '';
                 }
+            }
+
+            // 开关关闭时，在原始位置关闭文本块（保持与功能不存在时完全一致的代码路径）
+            if (!streamSanitizer) {
+                yield* pushEvents(stopBlock(streamState.textBlockIndex));
             }
 
             // 检查文本内容中的 bracket 格式工具调用
