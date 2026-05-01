@@ -36,20 +36,13 @@
             </div>
         </div>
 
-        <!-- Hero: uptime + server time -->
+        <!-- Hero: uptime -->
         <div class="sysinfo-hero">
             <div class="sysinfo-hero-item">
                 <div class="sysinfo-hero-icon"><i class="fas fa-clock"></i></div>
                 <div class="sysinfo-hero-body">
                     <span class="sysinfo-hero-label" data-i18n="dashboard.uptime">运行时间</span>
                     <span class="sysinfo-hero-value" id="uptime">--</span>
-                </div>
-            </div>
-            <div class="sysinfo-hero-item">
-                <div class="sysinfo-hero-icon"><i class="fas fa-calendar-alt"></i></div>
-                <div class="sysinfo-hero-body">
-                    <span class="sysinfo-hero-label" data-i18n="dashboard.serverTime">服务器时间</span>
-                    <span class="sysinfo-hero-value" id="serverTime">--</span>
                 </div>
             </div>
         </div>
@@ -59,6 +52,13 @@
 
         <!-- Detail grid -->
         <div class="sysinfo-grid">
+            <div class="sysinfo-card">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="sysinfo-card-body">
+                    <span class="sysinfo-card-label" data-i18n="dashboard.serverTime">服务器时间</span>
+                    <span class="sysinfo-card-value" id="serverTime">--</span>
+                </div>
+            </div>
             <div class="sysinfo-card">
                 <i class="fas fa-cogs"></i>
                 <div class="sysinfo-card-body">
@@ -71,13 +71,6 @@
                 <div class="sysinfo-card-body">
                     <span class="sysinfo-card-label" data-i18n="dashboard.nodeVersion">Node.js</span>
                     <span class="sysinfo-card-value" id="nodeVersion">--</span>
-                </div>
-            </div>
-            <div class="sysinfo-card">
-                <i class="fas fa-desktop"></i>
-                <div class="sysinfo-card-body">
-                    <span class="sysinfo-card-label" data-i18n="dashboard.platform">操作系统</span>
-                    <span class="sysinfo-card-value" id="platformInfo">--</span>
                 </div>
             </div>
             <div class="sysinfo-card">
