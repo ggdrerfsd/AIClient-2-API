@@ -97,6 +97,8 @@ const KIRO_CONSTANTS = {
     BASE_URL: 'https://q.{{region}}.amazonaws.com/generateAssistantResponse',
     DEFAULT_MODEL_NAME: 'claude-sonnet-4-5',
     AXIOS_TIMEOUT: 120000, // 2 minutes timeout for normal requests
+    STREAMING_TIMEOUT: 600000, // 10 minutes timeout for streaming requests (thinking models may pause for extended periods)
+    STREAM_IDLE_TIMEOUT: 300000, // 5 minutes idle timeout during stream chunk reading (detect zombie connections)
     TOKEN_REFRESH_TIMEOUT: 15000, // 15 seconds timeout for token refresh (shorter to avoid blocking)
     USER_AGENT: 'KiroIDE',
     KIRO_VERSION: '0.11.63',
@@ -566,6 +568,13 @@ export class KiroApiService {
             maxSockets: 100,
             maxFreeSockets: 5,
             timeout: KIRO_CONSTANTS.AXIOS_TIMEOUT,
+        });
+        // 流式请求专用 agent：不设 socket 超时，避免 thinking 模型长时间无输出时被误杀
+        this.streamingHttpsAgent = new https.Agent({
+            keepAlive: true,
+            maxSockets: 100,
+            maxFreeSockets: 5,
+            timeout: 0,
         });
         
         const isTLSSidecarEnabled = isTLSSidecarEnabledForProvider(this.config, this.config.MODEL_PROVIDER || MODEL_PROVIDER.KIRO_API);
@@ -2221,13 +2230,17 @@ async saveCredentialsToFile(filePath, newData) {
         const requestUrl = model.startsWith('amazonq') ? this.amazonQUrl : this.baseUrl;
 
         let stream = null;
+        let hasYieldedData = false; // 跟踪是否已 yield 过数据，已发送数据后不再重试避免响应混乱
+        let idleTimer = null; // 流读取空闲超时（声明在 try 外，catch/finally 中也需要清理）
         try {
             const axiosConfig = {
                 method: 'post',
                 url: requestUrl,
                 data: requestData,
                 headers,
-                responseType: 'stream'
+                responseType: 'stream',
+                timeout: KIRO_CONSTANTS.STREAMING_TIMEOUT, // 10 分钟，覆盖默认的 2 分钟
+                httpsAgent: this.streamingHttpsAgent, // 复用流式专用 agent，不设 socket 超时
             };
             this._applySidecar(axiosConfig);
             const response = await this.axiosInstance.request(axiosConfig);
@@ -2236,13 +2249,27 @@ async saveCredentialsToFile(filePath, newData) {
             let buffer = '';
             let lastContentEvent = null;  // 用于检测连续重复的 content 事件
 
+            // 流读取阶段的空闲超时：axios timeout 只管等响应头，chunk 读取阶段需要独立的空闲检测
+            // 如果上游在流中途停止发送数据但 TCP 连接未关闭，此超时避免僵尸连接
+            // 仅在收到首个 chunk 后才启动：thinking 阶段上游可能长时间无输出，由 axios STREAMING_TIMEOUT 保护
+            const resetIdleTimer = () => {
+                if (idleTimer) clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    logger.warn('[Kiro] Stream idle timeout: no data received for 5 minutes, destroying stream');
+                    if (stream && typeof stream.destroy === 'function') {
+                        stream.destroy(new Error('Stream idle timeout'));
+                    }
+                }, KIRO_CONSTANTS.STREAM_IDLE_TIMEOUT);
+            };
+
             for await (const chunk of stream) {
+                resetIdleTimer(); // 每个 chunk 到达时重置空闲计时器（首个 chunk 时启动）
                 buffer += chunk.toString();
-                
+
                 // 解析缓冲区中的事件
                 const { events, remaining } = this.parseAwsEventStreamBuffer(buffer);
                 buffer = remaining;
-                
+
                 // yield 所有事件，但过滤连续完全相同的 content 事件（Kiro API 有时会重复发送）
                 for (const event of events) {
                     if (event.type === 'content' && event.data) {
@@ -2252,20 +2279,26 @@ async saveCredentialsToFile(filePath, newData) {
                             continue;
                         }
                         lastContentEvent = event.data;
+                        hasYieldedData = true;
                         yield { type: 'content', content: event.data };
                     } else if (event.type === 'toolUse') {
+                        hasYieldedData = true;
                         yield { type: 'toolUse', toolUse: event.data };
                     } else if (event.type === 'toolUseInput') {
+                        hasYieldedData = true;
                         yield { type: 'toolUseInput', input: event.data.input };
                     } else if (event.type === 'toolUseStop') {
+                        hasYieldedData = true;
                         yield { type: 'toolUseStop', stop: event.data.stop };
                     } else if (event.type === 'contextUsage') {
                         yield { type: 'contextUsage', contextUsagePercentage: event.data.contextUsagePercentage };
                     }
                 }
             }
+            if (idleTimer) clearTimeout(idleTimer);
         } catch (error) {
             // 确保出错时关闭流
+            if (idleTimer) clearTimeout(idleTimer);
             if (stream && typeof stream.destroy === 'function') {
                 stream.destroy();
             }
@@ -2331,7 +2364,8 @@ async saveCredentialsToFile(filePath, newData) {
             }
 
             // Handle network errors (ECONNRESET, ETIMEDOUT, etc.) with exponential backoff
-            if (isNetworkError && retryCount < maxRetries) {
+            // 如果已经 yield 过数据，不再重试：重试会生成全新响应，与已发送的部分数据混合导致客户端收到损坏的流
+            if (isNetworkError && retryCount < maxRetries && !hasYieldedData) {
                 const delay = baseDelay * Math.pow(2, retryCount);
                 const errorIdentifier = errorCode || errorMessage.substring(0, 50);
                 logger.info(`[Kiro] Network error (${errorIdentifier}) in stream. Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
@@ -2339,11 +2373,15 @@ async saveCredentialsToFile(filePath, newData) {
                 yield* this.streamApiReal(method, model, body, isRetry, retryCount + 1);
                 return;
             }
+            if (isNetworkError && hasYieldedData) {
+                logger.warn(`[Kiro] Network error (${errorCode || errorMessage.substring(0, 50)}) in stream after data was already sent to client. Not retrying to avoid response corruption.`);
+            }
 
             logger.error(`[Kiro] Stream API call failed (Status: ${status}, Code: ${errorCode}):`,  error.message);
             throw error;
         } finally {
-            // 确保流被关闭，释放资源
+            // 确保流和定时器被清理，释放资源
+            if (idleTimer) clearTimeout(idleTimer);
             if (stream && typeof stream.destroy === 'function') {
                 stream.destroy();
             }
