@@ -382,3 +382,94 @@ export async function handleGetProviderUsage(req, res, currentConfig, providerPo
         return true;
     }
 }
+
+/**
+ * CC Switch 用量查询接口
+ * GET /api/user/self
+ * 使用 Bearer token (API Key) 认证，聚合所有 Claude 实例用量，返回 NewAPI 兼容格式
+ */
+export async function handleGetUserSelf(req, res, currentConfig, providerPoolManager) {
+    try {
+        // Bearer token 认证：匹配服务的 API Key
+        const authHeader = req.headers.authorization;
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        if (!token || token !== currentConfig.REQUIRED_API_KEY) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: false,
+                message: 'Unauthorized: invalid API key'
+            }));
+            return true;
+        }
+
+        const providerType = 'claude-kiro-oauth';
+        let usageData;
+
+        // 优先读缓存
+        const cachedData = await readProviderUsageCache(providerType);
+        if (cachedData) {
+            usageData = cachedData;
+        } else {
+            usageData = await getProviderTypeUsage(providerType, currentConfig, providerPoolManager);
+            await updateProviderUsageCache(providerType, usageData);
+        }
+
+        // 聚合所有实例的用量
+        let totalUsed = 0;
+        let totalLimit = 0;
+        let healthyCount = 0;
+        let planName = 'Kiro';
+        const breakdownMap = new Map();
+
+        for (const instance of (usageData.instances || [])) {
+            if (!instance.success || !instance.usage) continue;
+            if (instance.isDisabled) continue;
+            healthyCount++;
+
+            const usage = instance.usage;
+            if (usage.subscription?.title) {
+                planName = usage.subscription.title;
+            }
+
+            for (const item of (usage.usageBreakdown || [])) {
+                const used = item.currentUsage ?? 0;
+                const limit = item.usageLimit ?? 0;
+                totalUsed += used;
+                totalLimit += limit;
+
+                const key = item.displayName || item.resourceType || 'unknown';
+                if (!breakdownMap.has(key)) {
+                    breakdownMap.set(key, { name: key, used: 0, limit: 0, unit: item.unit || '' });
+                }
+                const entry = breakdownMap.get(key);
+                entry.used += used;
+                entry.limit += limit;
+            }
+        }
+
+        const totalQuota = totalLimit - totalUsed;
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: true,
+            data: {
+                group: planName,
+                quota: totalQuota,
+                used_quota: totalUsed,
+                total_quota: totalLimit,
+                instances: usageData.totalCount || 0,
+                healthy_instances: healthyCount,
+                breakdown: [...breakdownMap.values()]
+            }
+        }));
+        return true;
+    } catch (error) {
+        logger.error('[Usage API] Failed to get user self usage:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: false,
+            message: 'Failed to get usage info: ' + error.message
+        }));
+        return true;
+    }
+}

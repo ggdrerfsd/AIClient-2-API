@@ -66,7 +66,7 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
     }
     
     // Handle UI management API requests (需要token验证，除了登录接口、健康检查)
-    if (pathParam.startsWith('/api/') && pathParam !== '/api/login' && pathParam !== '/api/health' && pathParam !== '/api/grok/assets') {
+    if (pathParam.startsWith('/api/') && pathParam !== '/api/login' && pathParam !== '/api/health' && pathParam !== '/api/grok/assets' && pathParam !== '/api/user/self') {
         // 检查token验证
         const isAuth = await auth.checkAuth(req);
         if (!isAuth) {
@@ -303,6 +303,11 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
     // Quick link config to corresponding provider based on directory
     if (method === 'POST' && pathParam === '/api/quick-link-provider') {
         return await providerApi.handleQuickLinkProvider(req, res, currentConfig, providerPoolManager);
+    }
+
+    // CC Switch usage query endpoint (uses API Key auth, not session auth)
+    if (method === 'GET' && pathParam === '/api/user/self') {
+        return await usageApi.handleGetUserSelf(req, res, currentConfig, providerPoolManager);
     }
 
     // Get usage limits for all providers
